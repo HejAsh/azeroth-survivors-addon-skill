@@ -39,7 +39,27 @@ Windows; OpenCode additionally reads `~/.claude/skills/` and
 
 ## Install
 
-### Option A — scripts (recommended)
+### Option A — npx skills (easiest)
+
+Uses Vercel Labs' `skills` CLI (GitHub as the registry, `skills-lock.json` as
+the lockfile). Verified against this repo — it finds the nested
+`azeroth-survivors-addon/` skill and installs it under its own name:
+
+```sh
+# project-level: installs to .agents/skills/ (seen by OpenCode, Crush, and 15+ more)
+npx skills@latest add HejAsh/azeroth-survivors-addon-skill
+
+# global (your user account, all projects)
+npx skills@latest add HejAsh/azeroth-survivors-addon-skill -g
+
+# preview without installing
+npx skills@latest add HejAsh/azeroth-survivors-addon-skill -l
+```
+
+Use the `@latest` pin to dodge the npx cache. Restore the same skills on another
+machine or in CI with `npx skills experimental_install`.
+
+### Option B — scripts
 
 From this folder:
 
@@ -56,7 +76,7 @@ sh install-skill.sh
 This copies `azeroth-survivors-addon/` to every global location above plus the
 project-local `./.agents/skills/azeroth-survivors-addon/` fallback.
 
-### Option B — manual copy
+### Option C — manual copy
 
 Copy `azeroth-survivors-addon/` to any of these (rename-free, folder name must
 stay `azeroth-survivors-addon`):
