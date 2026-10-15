@@ -1,6 +1,6 @@
 ---
 name: azeroth-survivors-addon
-description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter), predicting level-up cards (deck weights, power model, rank scaling), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
+description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, checking whether a 1.12 API name exists in this client (globals, functions, events, CVars, TOC directives, Lua 5.0 limits, library support), reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter), predicting level-up cards (deck weights, power model, rank scaling), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
 ---
 
 # Azeroth Survivors Addon
@@ -45,6 +45,11 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 ## API quick map
 
 Full field lists: see `references/api.md` (mirrors `addon_docs.md`).
+The **client's whole addon surface** — every global, function, widget method,
+event, CVar and TOC directive, plus the 1.12 limits and the library situation —
+is `references/client-api.md`. Check a name there before using it: it is the
+client's own captured reference, and a name being present does not promise the
+feature is built.
 
 **Functions:** `AZS_GetRunTime()`, `AZS_GetPhase()`, `AZS_GetRunLength()`, `AZS_GetBosses()`, `AZS_GetUpcomingBosses()`, `AZS_GetGuardians()`, `AZS_GetMeter()`, `AZS_UnitKind(unit)`, `AZS_SetHudShown(part, shown)` / `AZS_IsHudShown(part)`.
 

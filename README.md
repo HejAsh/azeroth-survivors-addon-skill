@@ -23,6 +23,14 @@ smooth clock, guardian-on-target-only, localized names vs. stable keys, etc.).
 - `azeroth-survivors-addon/references/api.md` — full API reference (mirrors
   `addon_docs.md`): every function, table, field, HUD part, addon prefix, and
   example.
+- `azeroth-survivors-addon/references/client-api.md` — the **client's whole
+  addon surface**: every global (with the ones it does not expose), function,
+  widget method per template, event, CVar, chat type and TOC directive, plus
+  the Lua 5.0 limits and what libraries can run. Generated from the client's
+  own reference tables and a live dump of its VM.
+- `azeroth-survivors-addon/references/card-system.md` — how the game builds and
+  deals the level-up cards: deck weights, rarity rules, rank math, the spell
+  power model, and per-stat leverage.
 - `addon_docs.md` — the original API document the skill was built from.
 - `install-skill.ps1` / `install-skill.sh` — install the skill to every known
   agent location on your machine.
