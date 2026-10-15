@@ -1,26 +1,23 @@
 # Azeroth Survivors: the card system
 
-How the game builds and shows choice cards. Verified against the game's Rust
-source (`crates/benilla-app/src/survivors/` in
-[OutThisLife/azeroth-survivors-re](https://github.com/OutThisLife/azeroth-survivors-re),
-a from-source build of Aethus's game on the benilla/wenilla engine), cross-checked
-against the shipped `AzerothSurvivors.exe`.
+How the game builds and shows choice cards, verified against the game's own
+implementation and cross-checked against the shipped `AzerothSurvivors.exe`.
 
 ## Target and method
 
-- Source of truth: `survivors/hud.rs` (`choices_for`, `describe_card`, `cast_at`),
-  `survivors/cards.rs` (`rarity`, `power`, `spell_tier`, deal/animation),
-  `survivors/data.rs` (`AbilityDef`, `PASSIVES`, caps), `survivors/mod.rs`
-  (`Owned` rank-scaling).
+- Source of truth: the game's dealing code (`choices_for`, `describe_card`,
+  `cast_at`), its rarity rules (`rarity`, `power`, `spell_tier`), its ability
+  and passive tables (`AbilityDef`, `PASSIVES`, caps), and its rank-scaling
+  (`Owned`).
 - Cross-checked against the shipped client PE x86_64, SHA-256
   `67f1b30f61304128a274507446493d8f9340c51b737718bcc2903f7bc58ebddf`
   (an earlier build; see "Version drift" for where the live game differs).
 - The client embeds its UI strings in plaintext, so a static string scan of the
-  exe recovers the same card fields and texts the source shows.
+  exe recovers the same card fields and texts the implementation shows.
 
 ## The card model
 
-Every offer is one of five `Choice` kinds (`hud.rs` `choices_for`):
+Every offer is one of five `Choice` kinds:
 
 | kind | pool weight | card footer ("why") |
 |---|---|---|
@@ -35,7 +32,7 @@ The picker deals **three** cards by weighted sampling **without replacement**
 spell, and a new spell more likely than a passive. Rings/trinkets/amulets are a
 separate jewelry screen (guardian lair / battleground cache), not this deck.
 
-### Caps (from `data.rs`)
+### Caps
 
 - `MAX_ABILITY_LEVEL = 8`, `MAX_ABILITIES = 6`
 - `MAX_PASSIVE_LEVEL = 5`, `MAX_PASSIVES = 6`
@@ -45,7 +42,7 @@ spells when you own all of the class pool (`Nothing left to learn`).
 
 ## Rarity is derived, not rolled
 
-`cards.rs::rarity()` computes each card's rarity from what the pick *does* —
+The game computes each card's rarity from what the pick *does* —
 there is no random rarity roll. (An earlier note in this file inferred a
 `[0.92, 0.05, 0.02, 0.02]` float table from the binary; that was wrong — those
 floats are unrelated.) WoW item-quality colours:
@@ -67,7 +64,7 @@ floats are unrelated.) WoW item-quality colours:
 `count` and `radius` by the spell's `Kind`. Defensive kinds have no `power()`
 and sit at Rare.
 
-## Rank scaling (the exact math, `mod.rs::Owned`)
+## Rank scaling (the exact math)
 
 Each rank of an ability changes it by a fixed formula — this is what a rank-up
 card is actually worth:
@@ -84,7 +81,7 @@ card is actually worth:
 lines that change: `Damage a » b`, `Cooldown a » b`, `Targets a » b`,
 `Area a » b`, `Lasts a » b`. That is the text on the card.
 
-## Passives (`data.rs::PASSIVES`)
+## Passives
 
 Ten fixed passives, each boosting one stat per level: `might` (+10% damage),
 `fortitude` (+20% max hp), `pack` (+10% speed), `renew` (+regen),
@@ -119,7 +116,7 @@ UI, so an addon can predict the deck but never see the hand. The same holds for
 engine announcements: the guardian toast ("is slain! Its lair yields treasure")
 is native text, not an addon message — count guardian kills from `AZS_RUN.gk`.
 
-## The game's own power() metric (`cards.rs`)
+## The game's own power() metric
 
 The game ranks a class's spells against each other with one formula, used to
 tier NEW-spell rarities and (in this fork) to sort suggestions:
@@ -133,7 +130,7 @@ ticks = Ground/GroundSelf with duration ? duration : 1
 power = per * ticks * reach / max(cooldown, 0.2)
 ```
 
-Computed from the shipped `ABILITIES` table (rank-1 stats), strongest first:
+Computed from the shipped ability table (rank-1 stats), strongest first:
 
 | class | power ranking |
 |---|---|
@@ -174,7 +171,7 @@ The live `AzerothSurvivors.exe` (Aethus's build) rolls **per-card upgrade
 magnitudes** ("+19% duration", "+6% damage", "+43% damage / −20% cooldown") and
 shows ranks above 8 (e.g. "Rank 10 » 11"), so its `MAX_ABILITY_LEVEL` and the
 "rarity decides how strong it is" wording mean the magnitudes vary per card
-there, unlike this from-source build's fixed per-rank formulas. The **structure**
+there, unlike the baseline's fixed per-rank formulas. The **structure**
 (deck, weights, derived rarity tiers, target milestones, footer texts) is the
 same; treat the exact constants here as the open-source baseline and the live
 game as a tuned variant.
@@ -198,13 +195,13 @@ inside — each one changes how an addon should be written:
   bar's action slots 1–6 mirror that order (slot 12 = racial). That is the
   only reliable spell→slot mapping: the client's `GetActionCooldown` is not
   wired to the game's real cooldowns (always 0.0), so never map by cooldown.
-- **Passives are a fixed global set of 10** (`data.rs::PASSIVES`), shared by
+- **Passives are a fixed global set of 10**, shared by
   all classes; they surface in addons only as meter `proc` lines and
   `AZS_STATS` keys — there is no passive list in the addon API.
 - **The deck weights are public knowledge**: 1.2 rank-up / 1.0 new spell /
   0.8 passive rank / 0.5 new passive, three cards, no replacement. Advice can
   state real odds instead of guessing.
-- **The engine is a Lua 5.0-era 1.12 emulation** (`benilla-ui`) over Rust:
+- **The engine is a Lua 5.0-era 1.12 emulation** over Rust:
   stock 1.12 idioms work, but anything the emulator didn't implement is nil —
   feature-detect globals (`if (GetActionCooldown)`) rather than assume.
 
