@@ -1,6 +1,6 @@
 ---
 name: azeroth-survivors-addon
-description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
+description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter), predicting level-up cards (deck weights, power model, rank scaling), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
 ---
 
 # Azeroth Survivors Addon
@@ -40,6 +40,7 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 - A saved frame position is in that frame's own scale units: after a scale change, convert saved coordinates or clamp to screen or the frame lands off-screen.
 - `GameTooltip_SetDefaultAnchor` parks the tooltip bottom-right — mind it when drawing something in that corner.
 - `AZS_ZONE` is sent once per run: after a mid-run `/reload` it can be empty. Fall back to `GetRealZoneText()` plus `AZS_RUN.fin` for the zone facts.
+- The phase string reports `playing` while the level-up picker is up — detect cards with `AZS_RUN.owed > 0`. Bar slots 1–6 mirror `AZS_SPELLS` order (racial last = slot 12); `GetActionCooldown` is not wired, never map by cooldown. Full source-verified model: `references/card-system.md`.
 
 ## API quick map
 

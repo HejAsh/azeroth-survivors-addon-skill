@@ -179,6 +179,35 @@ there, unlike this from-source build's fixed per-rank formulas. The **structure*
 same; treat the exact constants here as the open-source baseline and the live
 game as a tuned variant.
 
+## What the source teaches addon developers
+
+Lessons from reading the game's Rust source that only make sense from the
+inside — each one changes how an addon should be written:
+
+- **The addon API is a mirror, not the engine.** `AZS_*` tables are built by a
+  server→client whisper feed consumed by a built-in Lua parser that registers
+  before any addon. Addons read a snapshot; the game's truth lives in Bevy ECS.
+  That is why offers, magnitudes, and RNG never reach you.
+- **`AZS_GetPhase()` lies during the picker.** The game's own state machine
+  uses `Phase::LevelUp` while the addon layer still reports `playing`. Gate
+  "cards are on screen" on `AZS_RUN.owed > 0`, not the phase string.
+- **Ranks are pure formulas, not tables.** Every rank applies `+30% dmg,
+  −7% cd, +8% area, +10% duration, +1 target at 3/5/7` — so an addon can
+  compute a card's exact value from the current meter without seeing it.
+- **`AZS_SPELLS` order is acquisition order with the racial last**, and the
+  bar's action slots 1–6 mirror that order (slot 12 = racial). That is the
+  only reliable spell→slot mapping: the client's `GetActionCooldown` is not
+  wired to the game's real cooldowns (always 0.0), so never map by cooldown.
+- **Passives are a fixed global set of 10** (`data.rs::PASSIVES`), shared by
+  all classes; they surface in addons only as meter `proc` lines and
+  `AZS_STATS` keys — there is no passive list in the addon API.
+- **The deck weights are public knowledge**: 1.2 rank-up / 1.0 new spell /
+  0.8 passive rank / 0.5 new passive, three cards, no replacement. Advice can
+  state real odds instead of guessing.
+- **The engine is a Lua 5.0-era 1.12 emulation** (`benilla-ui`) over Rust:
+  stock 1.12 idioms work, but anything the emulator didn't implement is nil —
+  feature-detect globals (`if (GetActionCooldown)`) rather than assume.
+
 ## Unknowns
 
 - The live game's per-card magnitude roll ranges and how rarity gates them.
