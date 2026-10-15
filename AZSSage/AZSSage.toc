@@ -1,6 +1,0 @@
-## Interface: 11200
-## Title: AZS Sage
-## Notes: Rank-up advice from the damage meter, new-spell hints, and winning-build memory. Survivor UI face.
-## Version: 5.11
-## SavedVariables: AZSSageDB
-AZSSage.lua
