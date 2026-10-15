@@ -103,7 +103,6 @@ AZS_SetHudShown("clock", true);  -- restore
 
 ## Minimap button (menu entry)
 
-No libraries needed (BugSack does this via Ace/FuBar; stock frames are enough).
 Parent a `Button` to `Minimap`, park it by angle, drag to move, persist the
 angle in `SavedVariables`, tooltip + click menu included:
 
