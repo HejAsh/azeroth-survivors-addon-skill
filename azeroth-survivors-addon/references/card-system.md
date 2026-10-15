@@ -126,7 +126,7 @@ can predict the deck but never see the hand.
 - Whether jewelry offers are drawn from zone-specific tables
   (`armory.zone_drops` string suggests so).
 
-## Tools used (kept in this repo)
+## Tools used (local, not part of this repo)
 
 - `tools/scan_strings.py <exe> <needle…>` — regex string scan with offsets.
 - `tools/scan_prefixes.py <exe>` — AZS addon-prefix inventory.
@@ -134,3 +134,5 @@ can predict the deck but never see the hand.
 - `tools/mpq_hdr.py` / `tools/mpq_ls2.py` / `tools/mpq_find.py` — MPQ header,
   listfile and path search (patch-P has 574 files, no interface Lua; the UI is
   native, not FrameXML).
+- `tools/ghidra/dump_cards.py` — Ghidra headless post-script: decompiles
+  every function referencing the card-deal strings.
