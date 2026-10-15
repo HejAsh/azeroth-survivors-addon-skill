@@ -256,11 +256,56 @@ A list of `{ source, dmg }`, the most first. `source` is one of `boss melee`, `b
 `elite`, `mob melee`, `mob spell`, `area` (ground effects).
 
 ### `AZS_STATS`: your stats
-The numbers the character pane (C) shows: `hp` (max health), `dmg` (damage multiplier), `cd`
-(cooldown multiplier), `crit`, `cm` (crit multiplier), `arm` (damage reduction), `reg` (health
-per second), `area`, `cnt` (extra targets), `echo`, `spd`, `pick` (pickup range), `xp`, `luck`,
-`gold`, `heal` (heal per kill), `lch` (leech), `thn` (thorns), `liv` (lives), and more. Keys
-starting with `g` (`ghp`, `gdmg`, …) are what worn gear adds.
+The character's numbers. Recovered in full from the shipped client's own
+character-pane script (it renders every one of these), so the list is exact.
+Keys arrive as numbers; `0` means the stat is not raised.
+
+**Combat** — what multiplies or adds your damage:
+
+| key | meaning (from the game's own tooltips) |
+|---|---|
+| `hp` | maximum health |
+| `dmg` | damage multiplier; grows with level, gear, talents, jewelry and buffs |
+| `cd` | cooldown multiplier — haste is `1 - cd` |
+| `crit` | crit chance; past 100% the remainder adds to crit damage |
+| `cm` | crit damage multiplier |
+| `echo` | chance to strike twice; past 100% every spell strikes twice and the remainder is the chance of a third |
+| `area` | spell areas **and ranges** are this much larger |
+| `cnt` | extra targets every targeting spell picks |
+| `bp` | buff power — damage, haste, shield and thorns buffs are this much stronger |
+| `arm` | damage taken is reduced by this much (60% max) |
+| `reg` | health regained per second |
+| `thn` | fraction of melee damage taken dealt back |
+| `lch` | lifesteal — heal for this fraction of all damage dealt |
+| `heal` | health healed per kill |
+| `liv` | extra lives |
+
+**Situation bonuses** — damage multipliers that only apply in specific fights;
+all `0` until something raises them (so test `~= 0` before showing a row):
+
+| key | bonus |
+|---|---|
+| `big` | vs elites and bosses |
+| `exe` | vs enemies below 30% health |
+| `cc` | vs rooted, stunned, slowed or fleeing enemies |
+| `dotd` | vs enemies carrying one of your damage-over-time effects |
+| `doth` | your DoTs tick this much faster |
+| `dots` | how many of each of your DoTs one enemy carries at once |
+| `shd` | while you hold an absorb shield |
+| `auto` | your melee swings (racial) |
+| `pet` | your pets |
+
+**Run** — `spd` (movement speed), `pick` (pickup range), `xp`, `gold`, and
+**`luck`: better odds of rarer upgrades when you level up** — i.e. it is the
+only stat that biases card *rarity*.
+
+**Worn gear** — each `g…` key is what the equipped gear alone contributes to
+the matching stat: `ghp`, `gdmg`, `gcd`, `gcrit`, `gcm`, `garm`, `garea`,
+`gcnt`, `gecho`, `gspd`, `greg`, `gpick`, `ggold`. They are **totals for the
+whole set, not per piece** — the API exposes no jewelry inventory, so an addon
+cannot name the individual amulet/ring/trinket a bonus came from. The only
+per-piece evidence is the damage meter's `proc` lines, which carry the
+talent's or amulet's own name and damage.
 
 ---
 
