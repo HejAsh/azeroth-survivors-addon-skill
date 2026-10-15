@@ -1,130 +1,188 @@
-# Azeroth Survivors: the card system (reverse-engineered)
+# Azeroth Survivors: the card system
 
-How the game builds and shows choice cards, learned from the shipped client.
-Use it to align addon advice with what the game actually offers.
+How the game builds and shows choice cards. Verified against the game's Rust
+source (`crates/benilla-app/src/survivors/` in
+[OutThisLife/azeroth-survivors-re](https://github.com/OutThisLife/azeroth-survivors-re),
+a from-source build of Aethus's game on the benilla/wenilla engine), cross-checked
+against the shipped `AzerothSurvivors.exe`.
 
 ## Target and method
 
-- Target: `C:\Games\AzerothSurvivors\AzerothSurvivors.exe`, PE x86_64,
-  130,624,512 bytes, SHA-256
-  `67f1b30f61304128a274507446493d8f9340c51b737718bcc2903f7bc58ebddf`.
-- The client is a custom engine, not the stock 1.12 binary: Rust
-  (`crates\wenilla-rogue\src\game\*.rs`, `crates\wenilla-rogue-app\src\screens\*.rs`)
-  on Bevy 0.18 (bevy_ecs / bevy_ui / bevy_asset), with a Lua VM
-  (`crates\benilla-ui\src\script\*`) providing the 1.12 addon API. Game UI is
-  native Bevy; only the addon layer is Lua.
-- Method: the binary embeds its string data in plaintext, so a static
-  ASCII/UTF-8 scan (no decompiler — Ghidra/IDA were unavailable on the analysis
-  machine) recovers the card model, texts and data tables at file offsets.
-  Offsets below are file offsets into that exact SHA-256.
+- Source of truth: `survivors/hud.rs` (`choices_for`, `describe_card`, `cast_at`),
+  `survivors/cards.rs` (`rarity`, `power`, `spell_tier`, deal/animation),
+  `survivors/data.rs` (`AbilityDef`, `PASSIVES`, caps), `survivors/mod.rs`
+  (`Owned` rank-scaling).
+- Cross-checked against the shipped client PE x86_64, SHA-256
+  `67f1b30f61304128a274507446493d8f9340c51b737718bcc2903f7bc58ebddf`
+  (an earlier build; see "Version drift" for where the live game differs).
+- The client embeds its UI strings in plaintext, so a static string scan of the
+  exe recovers the same card fields and texts the source shows.
 
 ## The card model
 
-Every offer is one of four kinds (strings at `0x58dbdd0` and `0x58e0000` region):
+Every offer is one of five `Choice` kinds (`hud.rs` `choices_for`):
 
-| kind | offered when | footer ("why") |
+| kind | pool weight | card footer ("why") |
 |---|---|---|
-| spell (`abilities`) | level up | `Improves a spell you know` (rank-up) or `New spell` + `Takes a spell slot · {n}/{max}` |
-| ring | guardian lair / cache | `Upgrades a ring you wear` / `Takes a ring slot · {n}/{max}` |
-| trinket | guardian lair / cache | `Upgrades a trinket you wear` / `Takes a trinket slot · {n}/{max}` |
-| amulet | guardian lair / cache | `Empowers your amulet` / `Takes the amulet slot` |
+| `Upgrade(i)` (rank up an owned ability) | **1.2** | `Improves a spell you know` |
+| `NewAbility(def)` (a spell from the class pool you lack) | **1.0** | `New spell` · `Takes a spell slot · {n}/6` |
+| `UpPassive(i)` (rank up an owned passive) | **0.8** | `Empowers ...` |
+| `NewPassive(p)` (a passive you lack) | **0.5** | `New talent` · `Takes a passive slot · {n}/6` |
+| `Heal` (only when the pool is empty) | — | full restore |
 
-Observed fields of a card (Rust-side keys, `0x58dbdd0` + `0x66d46c8` region):
-`title`, `text`/`lines`, `icon`, `kind`, `rarity`/`rarityName`, `rank`,
-`replaces` (+`replacesText/Icon/Rarity/Rank`), `new` (NEW badge), `why`,
-`worn` ("WORN NOW" / "Lost if you take this one" on jewelry), and the screen
-state: `choices`, `whylevelup` (level-up vs `GUARDIAN SLAIN — Its Hoard!` vs
-`BATTLEGROUND CACHE — Treasure!`), `rerolls`, `rerollCost`, `banishes`,
-`skip`, `skipGold`.
+The picker deals **three** cards by weighted sampling **without replacement**
+(`pool.swap_remove`). So a rank-up is always slightly more likely than a new
+spell, and a new spell more likely than a passive. Rings/trinkets/amulets are a
+separate jewelry screen (guardian lair / battleground cache), not this deck.
 
-Behavior learned from the strings:
+### Caps (from `data.rs`)
 
-- "Choose a spell. Its rarity decides how strong it is." — a card's rarity
-  rolls the strength of its upgrade text (`-7% cooldown`, `+12% area`, …), so
-  two cards for the same spell can differ in value.
-- Rank-ups are always for spells you own (`Improves a spell you know`); the
-  card shows `Rank {from} » {to}`. When every owned spell is capped the game
-  shows `Nothing left to learn`.
-- New spells consume a slot; the SPELLS bar shows the count (`5/6`, max
-  observed 6).
-- Jewelry cards compare against worn gear: `Replaces {name}`, `WORN NOW`,
-  `Lost if you take this one`.
-- Legendary amulets are per class, one per spell: "LEGENDARY AMULETS · EACH
-  CLASS ITS OWN, ONE FOR EVERY SPELL" (`0x58fdb00` region), e.g. Eye of the
-  Splitting Sky, Stormcaller's Amulet. An amulet "remakes {spell}".
-- Codex tracks what a run has offered ("SEEN UP TO {rarity}", "A NEW ONE, BY
-  RARITY").
-- Reroll: "Second Thoughts" talent gives free rerolls ("One more free reroll
-  every run…"); beyond that rerolls cost gold (`Reroll ({cost} gold)`).
-  Banish: "Once a run, banish a card: it never comes up again that run, and
-  the hand is dealt again." (1–3 uses by talents). Skip grants gold
-  (`Skip (+{skip_gold} gold)`).
-- "Picked again, it grows by nearly the pick's whole worth every time." —
-  repeated picks of the same upgrade keep most of their value.
+- `MAX_ABILITY_LEVEL = 8`, `MAX_ABILITIES = 6`
+- `MAX_PASSIVE_LEVEL = 5`, `MAX_PASSIVES = 6`
+
+A spell stops being offered for rank-ups at rank 8; the deck runs out of new
+spells when you own all of the class pool (`Nothing left to learn`).
+
+## Rarity is derived, not rolled
+
+`cards.rs::rarity()` computes each card's rarity from what the pick *does* —
+there is no random rarity roll. (An earlier note in this file inferred a
+`[0.92, 0.05, 0.02, 0.02]` float table from the binary; that was wrong — those
+floats are unrelated.) WoW item-quality colours:
+
+| card | rarity |
+|---|---|
+| Rank-up to `MAX_ABILITY_LEVEL` (rank 8) | **Legendary** |
+| Rank-up that adds a target (reaching rank 3, 5, or 7 on a multi-target kind) | **Epic** |
+| Other rank-ups | **Uncommon** |
+| New ability, strongest third of the class by `power()` | **Epic** |
+| New ability, weakest third | **Uncommon** |
+| New ability, middle third, or a defensive (no `power()`) | **Rare** |
+| New passive | Uncommon |
+| Passive to rank 5 / rank 4 / rank 2 / other | Epic / Rare / Common / Uncommon |
+| Heal | Common |
+
+`power()` (the game's own "how strong is this spell" metric) =
+`per-cast damage × ticks × reach / cooldown`, where reach is derived from
+`count` and `radius` by the spell's `Kind`. Defensive kinds have no `power()`
+and sit at Rare.
+
+## Rank scaling (the exact math, `mod.rs::Owned`)
+
+Each rank of an ability changes it by a fixed formula — this is what a rank-up
+card is actually worth:
+
+| stat | per rank |
+|---|---|
+| damage / dot | `× (1 + 0.3·(rank-1))` → **+30% per rank** |
+| cooldown | `base × 0.93^(rank-1)` → **−7% per rank** |
+| targets (`count`) | **+1 at ranks 3, 5, 7** (the Epic milestones) |
+| area (`radius`) | `× (1 + 0.08·(rank-1))` → **+8% per rank** |
+| duration | `× (1 + 0.1·(rank-1))` → **+10% per rank** |
+
+`describe_card` diffs `cast_at(rank)` vs `cast_at(rank+1)` and prints only the
+lines that change: `Damage a » b`, `Cooldown a » b`, `Targets a » b`,
+`Area a » b`, `Lasts a » b`. That is the text on the card.
+
+## Passives (`data.rs::PASSIVES`)
+
+Ten fixed passives, each boosting one stat per level: `might` (+10% damage),
+`fortitude` (+20% max hp), `pack` (+10% speed), `renew` (+regen),
+`intellect` (+8% haste), `amplify` (+10% area), `detect` (magnet),
+`wisdom` (+xp/growth), `wild` (armor), `kings` (crit). These are the "Your
+bonuses" a build leans on; the `AZS_STATS` keys (`dmg`, `cd`, `area`, `crit`,
+`reg`, `spd`, `xp`, `arm`, …) are these stats after passives and gear.
 
 ## Class ability pools (the new-spell deck)
 
-Plaintext table at `0x66c6800`–`0x66c8000`: per class, color, icon and the
-complete ability key list. These keys match `AZS_SPELLS.key` and
-`AZS_UnitKind`-style stable keys (lowercase, underscored):
+The `run.class.pool` a new-spell card draws from, per class (keys match
+`AZS_SPELLS.key`):
 
-- **warrior** `#C79C6E` INV_Sword_27: cleave, whirlwind, thunder_clap,
-  mortal_strike, execute, demo_shout, battle_shout, bloodthirst, rend,
-  shield_slam, bloodrage
-- **paladin** `#F58CBA` Spell_Holy_HolyBolt: consecration, exorcism,
-  hammer_of_wrath, holy_shock, holy_wrath, judgement, hammer_of_justice,
-  holy_light, divine_shield, holy_shield, redemption
-- **hunter** `#ABD473` INV_Weapon_Bow_07: auto_shot, arcane_shot, multi_shot,
-  serpent_sting, volley, explosive_trap, concussive_shot, aimed_shot,
-  immolation_trap, frost_trap, hunters_mark
-- **rogue** `#FFF569` INV_ThrowingKnife_04: sinister_strike, eviscerate,
-  blade_flurry, rupture, kidney_shot, gouge, ghostly_strike,
-  adrenaline_rush, backstab, slice_and_dice, seal_fate
-- **priest** `#FFFFFF` INV_Staff_30: smite, sw_pain, mind_blast, holy_nova,
-  pw_shield, renew, holy_fire, mind_flay, psychic_scream, devouring_plague
-- **shaman** `#0070DE` Spell_Nature_BloodLust: lightning_bolt,
-  chain_lightning, earth_shock, flame_shock, frost_shock, lightning_shield,
-  magma_totem, searing_totem, fire_nova, healing_wave, call_of_flame
-- **mage** `#69CCF0` INV_Staff_13: fireball, frostbolt, arcane_missiles,
-  frost_nova, arcane_explosion, blizzard, flamestrike, fire_blast,
-  cone_of_cold, blast_wave, pyroblast, ice_barrier, polymorph
-- **warlock** `#9482C9` Spell_Nature_FaerieFire: shadow_bolt, corruption,
-  immolate, curse_of_agony, rain_of_fire, hellfire, death_coil, searing_pain,
-  drain_life, fear, soul_fire
-- **druid** `#FF7D0A` Ability_Druid_Maul: wrath, moonfire, starfire,
-  hurricane, insect_swarm, entangling_roots, rejuvenation, regrowth, thorns,
-  swipe, faerie_fire
+- **warrior**: cleave, whirlwind, thunder_clap, mortal_strike, execute, demo_shout, battle_shout, bloodthirst, rend, shield_slam, bloodrage
+- **paladin**: consecration, exorcism, hammer_of_wrath, holy_shock, holy_wrath, judgement, hammer_of_justice, holy_light, divine_shield, holy_shield, redemption
+- **hunter**: auto_shot, arcane_shot, multi_shot, serpent_sting, volley, explosive_trap, concussive_shot, aimed_shot, immolation_trap, frost_trap, hunters_mark
+- **rogue**: sinister_strike, eviscerate, blade_flurry, rupture, kidney_shot, gouge, ghostly_strike, adrenaline_rush, backstab, slice_and_dice, seal_fate
+- **priest**: smite, sw_pain, mind_blast, holy_nova, pw_shield, renew, holy_fire, mind_flay, psychic_scream, devouring_plague
+- **shaman**: lightning_bolt, chain_lightning, earth_shock, flame_shock, frost_shock, lightning_shield, magma_totem, searing_totem, fire_nova, healing_wave, call_of_flame
+- **mage**: fireball, frostbolt, arcane_missiles, frost_nova, arcane_explosion, blizzard, flamestrike, fire_blast, cone_of_cold, blast_wave, pyroblast, ice_barrier, polymorph
+- **warlock**: shadow_bolt, corruption, immolate, curse_of_agony, rain_of_fire, hellfire, death_coil, searing_pain, drain_life, fear, soul_fire
+- **druid**: wrath, moonfire, starfire, hurricane, insect_swarm, entangling_roots, rejuvenation, regrowth, thorns, swipe, faerie_fire
 
-The racial is not in these pools (it is granted, not offered); the last
-`AZS_SPELLS` entry stays the racial and is excluded from predictions.
+The racial is not in these pools; the last `AZS_SPELLS` entry stays the racial
+and is excluded from predictions.
 
 ## What reaches addons
 
-The addon channel carries only the ten documented prefixes (`AZSZONE`,
-`AZSRUN`, `AZSBOSSES`, `AZSUNITS`, `AZSTGT`, `AZSSPELLS`, `AZSBUFFS`,
-`AZSMETER`, `AZSTAKEN`, `AZS`) — a full prefix scan of the exe found no
-card/offer prefix. The offered cards never leave the native UI, so an addon
-can predict the deck but never see the hand. The same holds for engine
-announcements: the guardian toast ("is slain! Its lair yields treasure") is
-native text, not an addon message — count guardian kills from `AZS_RUN.gk`.
+The addon channel carries only the ten documented prefixes — a full prefix scan
+of the exe found no card/offer prefix. The offered cards never leave the native
+UI, so an addon can predict the deck but never see the hand. The same holds for
+engine announcements: the guardian toast ("is slain! Its lair yields treasure")
+is native text, not an addon message — count guardian kills from `AZS_RUN.gk`.
+
+## The game's own power() metric (`cards.rs`)
+
+The game ranks a class's spells against each other with one formula, used to
+tier NEW-spell rarities and (in this fork) to sort suggestions:
+
+```
+reach(Bolt|Strike) = count + radius*0.4     reach(Melee|Orbit|Dot) = count
+reach(Nova|Cone|Ground|GroundSelf|Aura) = 1 + radius*0.6
+reach(Chain) = count + 1                    defensive kinds = unranked (Rare)
+per  = damage > 0 ? damage : dot * max(duration, 1)
+ticks = Ground/GroundSelf with duration ? duration : 1
+power = per * ticks * reach / max(cooldown, 0.2)
+```
+
+Computed from the shipped `ABILITIES` table (rank-1 stats), strongest first:
+
+| class | power ranking |
+|---|---|
+| paladin | consecration 32.4 · holy_wrath 21.3 · judgement 13.0 · hammer_of_wrath 10.7 · holy_shock 9.6 · exorcism 7.2 · hammer_of_justice 2.7 |
+| mage | flamestrike 28 · blizzard 24.3 · cone_of_cold 23.6 · fireball 20 · arcane_explosion 18.6 · blast_wave 16.1 · pyroblast 11.7 · arcane_missiles 9.5 · frostbolt 9.2 · fire_blast 7.4 · frost_nova 7.3 |
+| warlock | curse_of_agony 67.2 · corruption 40 · hellfire 31.2 · rain_of_fire 27.7 · shadow_bolt 10.7 · immolate/searing_pain 10 · death_coil 5.2 |
+| priest | sw_pain 36 · holy_nova 22 · smite 11.7 · mind_blast 9.1 · holy_fire 6.3 |
+| warrior | execute 40 · cleave 38.2 · sweeping_strikes 43 · whirlwind 20.8 · heroic_strike 17.5 · mortal_strike 16 · thunder_clap 11.6 |
+| druid | insect_swarm 40 · hurricane 28.4 · wrath 10.8 · moonfire/starfire 10 |
+| hunter | volley 23.1 · multi_shot 15 · arcane_shot 13 · aimed_shot 12 · explosive_trap 11 |
+| rogue | rupture 25.7 · sinister_strike 17.6 · blade_flurry 16.9 · eviscerate 15 |
+| shaman | chain_lightning 24 · lightning_shield 13.3 · lightning_bolt 11.5 · earth_shock 8.8 |
+
+Defensive/utility kinds (divine_shield, pw_shield, totems, thorns, heals) have
+no `power()` — the game treats them as Rare new-spell cards and pure utility.
+
+**Card-value comparison an addon can make**: a rank-up card is worth
+`power(spell) × 0.3` (the +30% damage step); a new-spell card is worth
+`power(spell)` (a whole new source). Early (few spells, open slots) new spells
+usually win; late, the carry's rank-ups do.
 
 ## Prediction model an addon can support
 
-- **Rank-up candidates**: owned, non-racial spells — every one below its cap
-  will be offered again (`Improves a spell you know`). Prioritize by live
-  damage share.
-- **New-spell candidates**: `CLASS_POOLS[class]` minus owned spells; offered
-  while spell slots remain (`Takes a spell slot · {n}/{max}`). An addon can
-  report the remaining pool and slot usage.
-- **Cap**: when pool minus owned is empty → `Nothing left to learn`.
+- **Rank-up candidates**: owned, non-racial spells below rank 8 — each will be
+  offered again at weight 1.2. Value the next rank by the scaling table above
+  (+30% dmg, −7% cd, and note the +1-target Epic milestones at 3/5/7).
+- **New-spell candidates**: `CLASS_POOLS[class]` minus owned, at weight 1.0,
+  offered while you hold fewer than 6 spells. Rank them by the game's own
+  `power()` tiers (Epic/Rare/Uncommon) if you want to match the game's taste.
+- **Rarity of a shown card**: derivable from the card's rank/kind alone — a
+  rank-8 or 3/5/7-target card is Legendary/Epic and worth taking over a plain
+  Uncommon rank-up.
+- **Cap**: pool minus owned empty → `Nothing left to learn`.
 
-## Unknowns (not recoverable without a decompiler)
+## Version drift
 
-- Exact rarity odds and how they shift with level/luck ("Better odds of rarer
-  upgrades when you level up" exists as a talent/effect text).
-- Per-ability rank caps and per-rank modifier ranges.
-- Offer weights within the rank-up/new pools (does the game bias toward your
-  carry spell? unknown).
+The live `AzerothSurvivors.exe` (Aethus's build) rolls **per-card upgrade
+magnitudes** ("+19% duration", "+6% damage", "+43% damage / −20% cooldown") and
+shows ranks above 8 (e.g. "Rank 10 » 11"), so its `MAX_ABILITY_LEVEL` and the
+"rarity decides how strong it is" wording mean the magnitudes vary per card
+there, unlike this from-source build's fixed per-rank formulas. The **structure**
+(deck, weights, derived rarity tiers, target milestones, footer texts) is the
+same; treat the exact constants here as the open-source baseline and the live
+game as a tuned variant.
+
+## Unknowns
+
+- The live game's per-card magnitude roll ranges and how rarity gates them.
+- Exact `power()` weights if the live game retuned `damage`/`cooldown`/`count`.
 - Whether jewelry offers are drawn from zone-specific tables
   (`armory.zone_drops` string suggests so).
 
