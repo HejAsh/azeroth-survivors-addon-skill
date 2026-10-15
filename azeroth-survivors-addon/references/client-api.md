@@ -1,26 +1,27 @@
 # The client's addon API
 
-Everything an addon can reach in Azeroth Survivors, taken from the client's
-own implementation and its captured 1.12.1 reference tables — **not** from
-the game's own source. This is the surface; `references/api.md` documents the
-run tables (`AZS_*`) in detail.
+Everything an addon can reach in Azeroth Survivors. This is the surface
+itself; `references/api.md` documents the run tables (`AZS_*`) in detail.
 
-## How this list was made
+## The surface
 
-| table | what it is |
+What a 1.12 addon can actually reach in this client:
+
+| | count |
 |---|---|
-| `lua_globals.tsv` | the running 1.12.1 client's in-world `_G`, 21555 names, each tagged engine / FrameXML / Lua |
-| `bindings.tsv` | every function the client binds, with arity and argument kinds |
-| `events.tsv` + `event_args.tsv` | every event and the arguments it fires with |
-| `cvars.tsv` | every CVar, its default and its help text |
-| `messages.tsv` | every chat message type |
+| API globals (functions, plus strings, numbers and tables they expose) | 1128 |
+| bound global functions | 1153 |
+| widget methods across 24 templates | 2305 |
+| events | 394 |
+| CVars | 381 |
+| chat message types | 465 |
 
-`scripts/api-coverage.sh` in the client repo diffs the reference against what
-the VM actually exposes at runtime. **That is the check to run before relying
-on any name here** — a name in the reference may still be an unbuilt feature.
+A further 20427 names come from stock FrameXML. They are real, but they are the
+game's own UI internals, not API to depend on.
 
-Surface at a glance: 1128 engine globals (1121 functions), 20427 FrameXML names,
-1153 bound functions, 481 widget methods, 394 events, 381 CVars.
+**A name being listed does not promise the feature works.** This is a partial
+1.12 implementation: where a name is absent it is simply `nil`, so feature-detect
+before you call it. The missing names are listed under Globals.
 
 ## Writing an addon
 
@@ -151,9 +152,9 @@ drop-ins.
 
 ## Globals
 
-1128 names are the client's own API (`engine` and `Lua` origins). The other 20427
-are FrameXML — real, but stock UI internals; feature-detect before depending
-on them.
+1128 names are the client's own API. The other 20427 are FrameXML — real, but stock
+UI internals; feature-detect before depending on them.
+
 
 Of the 1128 API globals, **1074 are present** in the running VM and 53 are not.
 
