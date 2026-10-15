@@ -1,6 +1,6 @@
 ---
 name: azeroth-survivors-addon
-description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, checking whether a 1.12 API name exists in this client (globals, functions, events, CVars, TOC directives, Lua 5.0 limits, library support), reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter), predicting level-up cards (deck weights, power model, rank scaling), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
+description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, checking whether a 1.12 API name exists in this client before calling it (globals, functions, widget methods, events, CVars, TOC directives, Lua 5.0 limits, library support), reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter), predicting level-up cards (deck weights, power model, rank scaling), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
 ---
 
 # Azeroth Survivors Addon
@@ -41,6 +41,27 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 - `GameTooltip_SetDefaultAnchor` parks the tooltip bottom-right — mind it when drawing something in that corner.
 - `AZS_ZONE` is sent once per run: after a mid-run `/reload` it can be empty. Fall back to `GetRealZoneText()` plus `AZS_RUN.fin` for the zone facts.
 - The phase string reports `playing` while the level-up picker is up — detect cards with `AZS_RUN.owed > 0`. Bar slots 1–6 mirror `AZS_SPELLS` order (racial last = slot 12); `GetActionCooldown` is not wired, never map by cooldown. Full source-verified model: `references/card-system.md`.
+
+## Using `references/client-api.md`
+
+It is a lookup, not something to read end to end. To answer "can I call X":
+
+1. Grep the file for `X`. Found under **API globals**, **Functions**, **Events**
+   or **CVars** → it exists.
+2. Found under the **missing** list in Globals → it is `nil`. Do not call it.
+3. Not found at all → treat it as absent and feature-detect
+   (`if (X) then ... end`) rather than assuming either way.
+
+**A listed name does not promise a working feature.** This is a partial 1.12
+implementation; a name can exist and still be a stub. The `debug*` family is the
+standing example: `debuginfo` and friends exist and do nothing.
+
+When the client is updated, its addon surface changes and this reference goes
+stale. Re-derive it before trusting it: the client ships `scripts/api-coverage.sh`,
+which asks its own VM what it exposes and diffs that against
+`reference/lua_globals.tsv`; `cargo run -p benilla-ui --example dump_globals`
+prints the live globals and `--example dump_widget_methods` the per-template
+widget methods. Both are in the client's repo, not here.
 
 ## API quick map
 
