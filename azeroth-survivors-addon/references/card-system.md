@@ -147,6 +147,36 @@ Computed from the shipped ability table (rank-1 stats), strongest first:
 Defensive/utility kinds (divine_shield, pw_shield, totems, thorns, heals) have
 no `power()` — the game treats them as Rare new-spell cards and pure utility.
 
+## Per-stat leverage: which stat helps *your* build
+
+The same `reach` terms say how sensitive each spell is to each stat. Divide the
+term's radius/count part by the whole, and you get the fraction of that spell's
+damage a stat drives:
+
+| stat | leverage on a spell |
+|---|---|
+| `dmg`, haste (`cd`) | 1.0 — every spell, unconditionally |
+| `area` | Nova/Cone/Ground/GroundSelf/Aura: `r·0.6/(1+r·0.6)` · Bolt/Strike: `r·0.4/(count+r·0.4)` · else 0 |
+| `cnt` | Bolt/Strike: `count/(count+r·0.4)` · Chain: `count/(count+1)` · Melee/Orbit/Dot: 1.0 · else 0 |
+| `doth`, `dots` | Dot kinds, and Ground/GroundSelf with a duration |
+| `crit` | your crit's share of damage: `c(cm−1) / (1 + c(cm−1))` |
+| `echo` | `echo / (1 + echo)` |
+
+Weight by each spell's share of the run's damage (`AZS_GetMeter`) and you get
+the share of *your* damage a stat drives. Two consequences an addon should honour:
+
+- **Damage and haste always score 1.0**, so they can never be "the best stat" by
+  leverage — they are the baseline, not the answer. Rank by `amount × leverage`.
+- The value of a piece of gear for a given build is
+  `gearBonus(stat) × leverage(stat)`. This is what makes a crit ring and an area
+  amulet comparable, and it is specific to the spells actually owned.
+
+**What is not available:** there is no jewelry inventory in the addon API. `g*`
+stats are per-stat totals for the whole worn set, so an addon can price gear but
+can never attribute a bonus to the individual amulet, ring or trinket. Say so
+rather than inventing a per-piece breakdown; the meter's `proc` lines, which
+carry a talent's or the amulet's own name, are the only per-piece trace.
+
 **Card-value comparison an addon can make**: a rank-up card is worth
 `power(spell) × 0.3` (the +30% damage step); a new-spell card is worth
 `power(spell)` (a whole new source). Early (few spells, open slots) new spells
@@ -204,6 +234,26 @@ inside — each one changes how an addon should be written:
 - **The engine is a Lua 5.0-era 1.12 emulation** over Rust:
   stock 1.12 idioms work, but anything the emulator didn't implement is nil —
   feature-detect globals (`if (GetActionCooldown)`) rather than assume.
+- **Ace2/Ace3 cannot load, on this client or a real one.** Checked against the
+  client's captured 1.12 global table: `strsplit`, `strjoin`, `strtrim`,
+  `wipe`, `tostringall`, `tContains`, `strmatch`, `gmatch`, `strrev`,
+  `securecall`, `hooksecurefunc`, `issecure`, `hook`, `CopyTable`, `Mixin` are
+  all absent — they are 2.0+ API, and Ace targets 2.4/3.3.5. AceConsole wants
+  `strtrim`/`strsplit`, AceTimer wants `wipe`, and nothing can register secure
+  events. What *is* present: `LoadAddOn`, `IsAddOnLoaded`, `GetAddOnMetadata`,
+  `get/seterrorhandler`, `date`, `time`, `PlaySound`, `Set/GetCVar`,
+  `randomseed`, `unpack`, `table.getn/setn` and the bare `str*`/`t*`/`math.*`
+  aliases. The 1.12 answer is a small in-file shim, which is what that era's own
+  libraries did (Titan, IcedT were single-file drop-ins, not LibStub). Also
+  avoid `#` (5.1 length), `select` where avoidable, and metatable tricks if you
+  want to keep it simple.
+- **The game already solves "read me over the cards".** It ships a `meterOnTop`
+  option — "Keeps the damage meter over the level-up and jewelry cards, so you
+  can check your damage while you pick" — implemented by drawing the damage
+  meter at a high frame level on `TOOLTIP` strata. An addon that wants the same
+  must do the same: the cards are native UI that renders *above* ordinary
+  frames, so a banner anchored at screen top is readable at no useful moment.
+  The recommendation belongs in a panel that stays on top, not a banner.
 
 ## Unknowns
 
