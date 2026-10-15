@@ -1,5 +1,8 @@
 # Azeroth Survivors Addon Skill
 
+<a href="https://ko-fi.com/hejash"><img alt="Ko-fi" src="https://img.shields.io/badge/Ko--fi-hejash-ff5e5b?logo=kofi&logoColor=white"></a>
+<a href="https://buymeacoffee.com/hejash"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-hejash-ffdd00?logo=buymeacoffee&logoColor=black"></a>
+
 An [Agent Skills](https://agentskills.io)-compatible skill for building World of
 Warcraft 1.12.1 addons for **Azeroth Survivors** (benilla / browser build).
 
