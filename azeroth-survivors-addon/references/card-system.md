@@ -1,7 +1,7 @@
 # Azeroth Survivors: the card system (reverse-engineered)
 
 How the game builds and shows choice cards, learned from the shipped client.
-Use it to align addon advice (AZS Sage) with what the game actually offers.
+Use it to align addon advice with what the game actually offers.
 
 ## Target and method
 
@@ -108,14 +108,14 @@ can predict the deck but never see the hand. The same holds for engine
 announcements: the guardian toast ("is slain! Its lair yields treasure") is
 native text, not an addon message — count guardian kills from `AZS_RUN.gk`.
 
-## Prediction model an addon can support (and what Sage does)
+## Prediction model an addon can support
 
 - **Rank-up candidates**: owned, non-racial spells — every one below its cap
   will be offered again (`Improves a spell you know`). Prioritize by live
   damage share.
 - **New-spell candidates**: `CLASS_POOLS[class]` minus owned spells; offered
-  while spell slots remain (`Takes a spell slot · {n}/{max}`). Sage reports
-  the remaining pool and slot usage.
+  while spell slots remain (`Takes a spell slot · {n}/{max}`). An addon can
+  report the remaining pool and slot usage.
 - **Cap**: when pool minus owned is empty → `Nothing left to learn`.
 
 ## Unknowns (not recoverable without a decompiler)
