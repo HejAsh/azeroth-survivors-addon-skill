@@ -1,0 +1,9 @@
+� {n}/{max}",
+  "Replaces {name}": "Replaces {name}",
+  "Rings": "Rings",
+  "Trinkets": "Trinkets",
+  "Amulets": "Amulets",
+  "Codex": "Codex",
+  "LEGENDARY AMULETS · EACH CLASS ITS OWN, ONE FOR EVERY SPELL": "LEGENDARY AMULETS · EACH CLASS ITS OWN, ONE FOR EVERY SPELL",
+  "ALL CLASSES · OFFERED TO EVERY HERO": "ALL CLASSES · OFFERED TO EVERY HERO",
+  "Every piece a run has offered you, on any hero. Caches, elites and guardians offer them. Click one to read it.": "Every piece a run has offered y

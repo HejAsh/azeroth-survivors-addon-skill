@@ -46,6 +46,8 @@ Full field lists: see `references/api.md` (mirrors `addon_docs.md`).
 
 **Keys:** zones `elwynn, duskwood, wsg, ab, feralas, arena, av, brm, aq`; classes `warrior, paladin, hunter, rogue, priest, shaman, mage, warlock, druid`; phases `ready, playing, choosing, paused, dead, victory`; kinds `final, boss, guardian, elite, normal`.
 
+**Card system:** the game's choice cards (spell/ring/trinket/amulet kinds, `why` texts, rarity-rolled upgrades, class ability pools) are documented in `references/card-system.md`, reverse-engineered from the client. The addon channel never carries the offered cards — predict the deck client-side.
+
 ## Minimal patterns
 
 ```lua
@@ -83,3 +85,60 @@ end);
 AZS_SetHudShown("meter", false); -- hide one; "all"/nil for all
 AZS_SetHudShown("clock", true);  -- restore
 ```
+
+## Minimap button (menu entry)
+
+No libraries needed (BugSack does this via Ace/FuBar; stock frames are enough).
+Parent a `Button` to `Minimap`, park it by angle, drag to move, persist the
+angle in `SavedVariables`, tooltip + click menu included:
+
+```lua
+local btn = CreateFrame("Button", "MyAddonMinimapButton", Minimap);
+btn:SetWidth(31); btn:SetHeight(31);
+local icon = btn:CreateTexture(nil, "BACKGROUND");
+icon:SetWidth(20); icon:SetHeight(20);
+icon:SetPoint("CENTER", btn, "CENTER", 0, 0);
+icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+local border = btn:CreateTexture(nil, "OVERLAY");
+border:SetWidth(53); border:SetHeight(53);
+border:SetPoint("CENTER", btn, "CENTER", 0, 0);
+border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder");
+btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight");
+
+local function place()
+  local a = MyDB.mmAngle or (math.pi * 1.1);
+  btn:ClearAllPoints();
+  btn:SetPoint("CENTER", Minimap, "CENTER", 80 * math.cos(a), 80 * math.sin(a));
+end
+place();
+
+btn:RegisterForDrag("LeftButton");
+btn:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+btn:SetScript("OnDragStart", function()
+  this:SetScript("OnUpdate", function() -- runs while held
+    local mx, my = Minimap:GetCenter();
+    local px, py = GetCursorPosition();
+    local s = UIParent:GetScale();
+    MyDB.mmAngle = math.atan2(py / s - my, px / s - mx);
+    place();
+  end);
+end);
+btn:SetScript("OnDragStop", function() this:SetScript("OnUpdate", nil); end);
+btn:SetScript("OnClick", function()
+  if ( arg1 == "RightButton" ) then ToggleMyMenu(); else ToggleMyAddon(); end
+end);
+btn:SetScript("OnEnter", function()
+  GameTooltip:SetOwner(this, "ANCHOR_LEFT");
+  GameTooltip:SetText("My Addon");
+  GameTooltip:AddLine("Left-click: on/off", 1, 1, 1);
+  GameTooltip:AddLine("Right-click: menu", 1, 1, 1);
+  GameTooltip:Show();
+end);
+btn:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+```
+
+Notes: a drag ending on the button also fires `OnClick`, so guard it with a
+`dragged` flag (set in the `OnUpdate`, consumed in `OnClick`). Keep the button
+at `MEDIUM` strata like the stock minimap buttons; popups/menus go `DIALOG`.
+Radius 80 assumes the stock round minimap; if a square minimap is in play,
+clamp the position to ride outside its border instead.
