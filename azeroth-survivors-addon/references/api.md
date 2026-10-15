@@ -309,29 +309,6 @@ talent's or amulet's own name and damage.
 
 ---
 
-## Drawing over the level-up cards
-
-The cards are native UI, not frames, so they render above ordinary addon frames.
-The game's own answer is the **`meterOnTop`** option — "Keeps the damage meter
-over the level-up and jewelry cards, so you can check your damage while you
-pick" — implemented by raising that window's frame level on `TOOLTIP` strata.
-
-An addon wanting to stay visible during a pick does the same, and re-asserts it
-on every refresh, because the choice overlay sits at the same strata with a
-higher level:
-
-```lua
-panel:SetFrameStrata("TOOLTIP");
-panel:SetFrameLevel(32764);   -- high enough to beat the overlay
-```
-
-Corollary worth knowing before you design a banner: an addon cannot anchor to
-the cards, because they are not frames. A floating banner therefore cannot be
-placed "on top of the card display" — advice that has to be read at the moment
-of choosing belongs in a panel that is already visible then.
-
----
-
 ## Hiding the game's HUD
 
 Each part of the game's own HUD can be turned off. An addon can then draw its own version in

@@ -41,8 +41,6 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 - `GameTooltip_SetDefaultAnchor` parks the tooltip bottom-right — mind it when drawing something in that corner.
 - `AZS_ZONE` is sent once per run: after a mid-run `/reload` it can be empty. Fall back to `GetRealZoneText()` plus `AZS_RUN.fin` for the zone facts.
 - The phase string reports `playing` while the level-up picker is up — detect cards with `AZS_RUN.owed > 0`. Bar slots 1–6 mirror `AZS_SPELLS` order (racial last = slot 12); `GetActionCooldown` is not wired, never map by cooldown. Full source-verified model: `references/card-system.md`.
-- **Ace2/Ace3 cannot load on 1.12** — `strsplit`, `strtrim`, `wipe`, `securecall`, `hooksecurefunc`, `CopyTable`, `Mixin` are all 2.0+ and absent, on this client and a real one. Use a small in-file shim instead. Also avoid `#` (5.1) and keep to `table.getn`.
-- **The cards are native UI, so nothing can anchor to them.** The game itself solves this with its `meterOnTop` option: `SetFrameStrata("TOOLTIP")` + a high `SetFrameLevel`, re-asserted each refresh. Advice meant for the moment of choosing belongs in a panel that stays on top — a screen-top banner is unreadable exactly when it matters.
 
 ## API quick map
 

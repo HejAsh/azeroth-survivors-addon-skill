@@ -234,26 +234,6 @@ inside — each one changes how an addon should be written:
 - **The engine is a Lua 5.0-era 1.12 emulation** over Rust:
   stock 1.12 idioms work, but anything the emulator didn't implement is nil —
   feature-detect globals (`if (GetActionCooldown)`) rather than assume.
-- **Ace2/Ace3 cannot load, on this client or a real one.** Checked against the
-  client's captured 1.12 global table: `strsplit`, `strjoin`, `strtrim`,
-  `wipe`, `tostringall`, `tContains`, `strmatch`, `gmatch`, `strrev`,
-  `securecall`, `hooksecurefunc`, `issecure`, `hook`, `CopyTable`, `Mixin` are
-  all absent — they are 2.0+ API, and Ace targets 2.4/3.3.5. AceConsole wants
-  `strtrim`/`strsplit`, AceTimer wants `wipe`, and nothing can register secure
-  events. What *is* present: `LoadAddOn`, `IsAddOnLoaded`, `GetAddOnMetadata`,
-  `get/seterrorhandler`, `date`, `time`, `PlaySound`, `Set/GetCVar`,
-  `randomseed`, `unpack`, `table.getn/setn` and the bare `str*`/`t*`/`math.*`
-  aliases. The 1.12 answer is a small in-file shim, which is what that era's own
-  libraries did (Titan, IcedT were single-file drop-ins, not LibStub). Also
-  avoid `#` (5.1 length), `select` where avoidable, and metatable tricks if you
-  want to keep it simple.
-- **The game already solves "read me over the cards".** It ships a `meterOnTop`
-  option — "Keeps the damage meter over the level-up and jewelry cards, so you
-  can check your damage while you pick" — implemented by drawing the damage
-  meter at a high frame level on `TOOLTIP` strata. An addon that wants the same
-  must do the same: the cards are native UI that renders *above* ordinary
-  frames, so a banner anchored at screen top is readable at no useful moment.
-  The recommendation belongs in a panel that stays on top, not a banner.
 
 ## Unknowns
 
