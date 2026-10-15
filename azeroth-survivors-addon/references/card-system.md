@@ -104,7 +104,9 @@ The addon channel carries only the ten documented prefixes (`AZSZONE`,
 `AZSRUN`, `AZSBOSSES`, `AZSUNITS`, `AZSTGT`, `AZSSPELLS`, `AZSBUFFS`,
 `AZSMETER`, `AZSTAKEN`, `AZS`) — a full prefix scan of the exe found no
 card/offer prefix. The offered cards never leave the native UI, so an addon
-can predict the deck but never see the hand.
+can predict the deck but never see the hand. The same holds for engine
+announcements: the guardian toast ("is slain! Its lair yields treasure") is
+native text, not an addon message — count guardian kills from `AZS_RUN.gk`.
 
 ## Prediction model an addon can support (and what Sage does)
 

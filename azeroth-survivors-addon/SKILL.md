@@ -32,6 +32,15 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 - Read-only API: nothing changes the run except HUD visibility.
 - Raw numbers arrive as Lua numbers, flags as `0`/`1`. Each table has a `*_UPDATED` global with `GetTime()` of last change.
 
+## Field gotchas
+
+- Count guardian kills with `AZS_RUN.gk`: the "is slain! Its lair yields treasure" line is engine text, never an addon message.
+- `AZS_SetHudShown` writes the game's saved settings: an addon that hides a part and is then removed leaves it hidden until the player re-ticks it in Options. Restore what you hid.
+- Probe a custom font on a hidden FontString before use — a failed load renders blank text. Fall back to `Fonts\\FRIZQT__.TTF`.
+- A saved frame position is in that frame's own scale units: after a scale change, convert saved coordinates or clamp to screen or the frame lands off-screen.
+- `GameTooltip_SetDefaultAnchor` parks the tooltip bottom-right — mind it when drawing something in that corner.
+- `AZS_ZONE` is sent once per run: after a mid-run `/reload` it can be empty. Fall back to `GetRealZoneText()` plus `AZS_RUN.fin` for the zone facts.
+
 ## API quick map
 
 Full field lists: see `references/api.md` (mirrors `addon_docs.md`).
