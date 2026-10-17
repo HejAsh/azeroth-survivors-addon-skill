@@ -99,6 +99,7 @@ Every boss alive right now (several can be up at once), bosses first in spawn or
 | `hp`, `hpm` | number | current and maximum health |
 | `final` | boolean | the zone's final boss |
 | `enraged` | boolean | enraged: dropped below 30% health, and uses its abilities more often |
+| `debuffs` | table | its debuffs, as `AZS_GetDebuffs(id)` returns them |
 
 ### `AZS_GetUpcomingBosses()` → `list`
 The bosses still to come, in order:
@@ -123,6 +124,26 @@ near:
 | `name` | string | name |
 | `hp`, `hpm` | number | current and maximum health |
 | `awake` | boolean | fighting (woken up) |
+| `debuffs` | table | its debuffs, as `AZS_GetDebuffs(id)` returns them |
+
+### `AZS_GetDebuffs(id)` → `list`
+The debuffs on a boss or guardian, by its `id` (from `AZS_GetBosses()` or `AZS_GetGuardians()`).
+Unit frames can't read these for a unit that isn't your target or mouseover, so this is the way
+to track them on boss and guardian frames:
+
+| field | type | meaning |
+|---|---|---|
+| `spell` | number | spell id |
+| `name` | string | display name |
+| `icon` | string | texture path, ready for `SetTexture()` |
+| `stacks` | number | stack count; 1 for an unstacked effect |
+| `duration` | number or nil | total duration in seconds, when known |
+| `remaining` | number or nil | seconds left, counted off the run's clock (`AZS_GetRunTime()`), when known |
+| `permanent` | boolean or nil | `true` only for an effect with no expiration (Hunter's Mark and Faerie Fire stay while their target lives and stays in range); `nil` can mean unknown timing |
+| `dispelType` | string or nil | `Magic`, `Curse`, `Disease` or `Poison` |
+
+Call it each frame (or `OnUpdate`) for a smooth countdown: the list only changes when a debuff
+comes, goes or is refreshed, but `remaining` is worked out on every call.
 
 ### `AZS_GetMeter()` → `lines, total, dps`
 The damage meter. `lines` holds one entry per damage source, the most damage first:
@@ -137,6 +158,22 @@ The damage meter. `lines` holds one entry per damage source, the most damage fir
 
 `total` is all the run's damage and `dps` the run's damage per second. The numbers cover the
 whole run: the Reset button on the game's meter window affects only that window.
+
+### `AZS_GetHealing()` → `lines, total, hps`
+The meter window's **Healing Done**: the same fields as `AZS_GetMeter()`, one line per source of
+healing (a spell, regeneration, leech, healing on kill…), where `dmg` is the health it gave you
+(overhealing left out) and `dps` that per second over the run's clock. `total` is all the run's
+healing and `hps` per second. Covers the whole run, like the damage meter.
+
+### `AZS_GetBossMeter()` → `lines, total, dps`
+The meter window's **Boss Damage**: the damage dealt to bosses in the last boss fight, the same
+fields as `AZS_GetMeter()`. A fight runs from the first hit on a boss while none was being
+fought until the last boss up falls; `dps` is per second over that fight (so far, while it is
+on). Empty before the first boss fight.
+
+### `AZS_GetLairs()` → `lairs`
+The guardians' lairs: `AZS_LAIRS` (below), each entry with `active` set: `true` while a guardian
+holds the lair (asleep or fighting), `false` while it is empty.
 
 ### `AZS_UnitKind(unit)` → `kind` or `nil`
 What an enemy unit (`"target"`, `"mouseover"`, …) is to the run: `final`, `boss`, `guardian`,
@@ -226,6 +263,11 @@ at most 40.
 
 `AZS_GetBosses()` and `AZS_GetGuardians()` are filtered views of this list.
 
+### `AZS_DEBUFFS`: debuffs on bosses and guardians
+A list of `{ id, spell, stacks, duration, ends, permanent, dispel, icon, name }`, the raw form of
+`AZS_GetDebuffs()`: `id` the unit's spawn id, `ends` the run second it ends, `duration` and
+`ends` -1 when unknown, `permanent` 1 for a mark, `dispel` empty for none.
+
 ### `AZS_TARGET`: your target
 
 | field | meaning |
@@ -250,6 +292,33 @@ A list of `{ spell, left }`: spell id and seconds left.
 
 ### `AZS_METER`: the damage meter
 The lines `AZS_GetMeter()` returns.
+
+### `AZS_HEALING`, `AZS_BOSSMETER`: the healing and boss meters
+The lines `AZS_GetHealing()` and `AZS_GetBossMeter()` return.
+
+### `AZS_CHESTS`: the caches on the field
+Every cache waiting to be opened (the ones at the start, the ones elites drop and the rest), in
+the order they appeared. What the next one costs is `AZS_RUN.chest`.
+
+| field | type | meaning |
+|---|---|---|
+| `id` | number | unique in the run |
+| `x`, `y`, `z` | number | world position |
+| `mx`, `my` | number | position on the zone's map, 0 to 1, as `GetPlayerMapPosition` gives yours; -1 if the map data is missing |
+
+### `AZS_LAIRS`: the guardians' lairs
+One entry per lair, in a fixed order:
+
+| field | type | meaning |
+|---|---|---|
+| `index` | number | 1, 2, … |
+| `state` | string | `asleep` (a guardian waits in it), `awake` (its guardian is fighting) or `empty` (slain, or none has come yet) |
+| `name` | string | the guardian's name, or the one that will come |
+| `id` | number | the guardian's id, as in `AZS_UNITS`; 0 when empty |
+| `left` | number | seconds until an empty lair fills; 0 once due, -1 while held |
+| `x`, `y`, `z`, `mx`, `my` | number | where the lair is, as in `AZS_CHESTS` |
+
+A guardian fights where it is, not at its lair, and walks back home if you lead it too far.
 
 ### `AZS_TAKEN`: damage you took, by source
 A list of `{ source, dmg }`, the most first. `source` is one of `boss melee`, `boss spell`,
@@ -318,10 +387,15 @@ time your handler runs.
 | `AZSRUN` | `AZS_RUN` | on change (every 0.2 s while playing) |
 | `AZSBOSSES` | `AZS_SCHEDULE` | on change |
 | `AZSUNITS` | `AZS_UNITS` | on change |
+| `AZSDEBUFFS` | `AZS_DEBUFFS` | on change (a debuff comes, goes or is refreshed) |
 | `AZSTGT` | `AZS_TARGET` | on change |
 | `AZSSPELLS` | `AZS_SPELLS` | on change |
 | `AZSBUFFS` | `AZS_BUFFS` | on change |
 | `AZSMETER` | `AZS_METER` | on change |
+| `AZSHEAL` | `AZS_HEALING` | on change |
+| `AZSBOSSDMG` | `AZS_BOSSMETER` | on change |
+| `AZSCHESTS` | `AZS_CHESTS` | on change |
+| `AZSLAIRS` | `AZS_LAIRS` | on change (every second while a lair waits to fill) |
 | `AZSTAKEN` | `AZS_TAKEN` | on change |
 | `AZS` | `AZS_STATS` | on change |
 

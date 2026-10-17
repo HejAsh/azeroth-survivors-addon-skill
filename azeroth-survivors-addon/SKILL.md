@@ -1,6 +1,6 @@
 ---
 name: azeroth-survivors-addon
-description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, checking whether a 1.12 API name exists in this client before calling it (globals, functions, widget methods, events, CVars, TOC directives, Lua 5.0 limits, library support), reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter), predicting level-up cards (deck weights, power model, rank scaling), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
+description: Build WoW 1.12.1 addons for Azeroth Survivors (benilla). Use when creating, debugging, or extending AZS addons, checking whether a 1.12 API name exists in this client before calling it (globals, functions, widget methods, events, CVars, TOC directives, Lua 5.0 limits, library support), reading run state (clock, phase, bosses, guardians, hero, spells, buffs, meter, debuffs, healing, boss damage, lairs, caches), predicting level-up cards (deck weights, power model, rank scaling), hiding the stock HUD, or handling AZS CHAT_MSG_ADDON messages.
 ---
 
 # Azeroth Survivors Addon
@@ -15,7 +15,8 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 2. **Read state via functions, not raw tables where a helper exists:**
    - smooth clock: `AZS_GetRunTime()` (not `AZS_RUN.t`)
    - bosses alive: `AZS_GetBosses()`; bosses to come: `AZS_GetUpcomingBosses()`
-   - guardians alive: `AZS_GetGuardians()`; meter: `AZS_GetMeter()`
+   - guardians alive: `AZS_GetGuardians()`; meter: `AZS_GetMeter()`; healing: `AZS_GetHealing()`; boss damage: `AZS_GetBossMeter()`
+   - debuffs on a boss/guardian: `AZS_GetDebuffs(id)`; lairs: `AZS_GetLairs()`
    - enemy kind: `AZS_UnitKind("target")`
 3. **React to changes via `CHAT_MSG_ADDON`** (tables are already updated when your handler runs) or poll in `OnUpdate`. Throttle `OnUpdate` with an elapsed accumulator; updates arrive max 5x/sec and only on change.
 4. **Hide HUD only for parts you replace**, only while enabled. Restore on disable.
@@ -72,13 +73,13 @@ is `references/client-api.md`. Check a name there before using it: it is the
 client's own captured reference, and a name being present does not promise the
 feature is built.
 
-**Functions:** `AZS_GetRunTime()`, `AZS_GetPhase()`, `AZS_GetRunLength()`, `AZS_GetBosses()`, `AZS_GetUpcomingBosses()`, `AZS_GetGuardians()`, `AZS_GetMeter()`, `AZS_UnitKind(unit)`, `AZS_SetHudShown(part, shown)` / `AZS_IsHudShown(part)`.
+**Functions:** `AZS_GetRunTime()`, `AZS_GetPhase()`, `AZS_GetRunLength()`, `AZS_GetBosses()`, `AZS_GetUpcomingBosses()`, `AZS_GetGuardians()`, `AZS_GetDebuffs(id)`, `AZS_GetMeter()`, `AZS_GetHealing()`, `AZS_GetBossMeter()`, `AZS_GetLairs()`, `AZS_UnitKind(unit)`, `AZS_SetHudShown(part, shown)` / `AZS_IsHudShown(part)`.
 
-**Tables:** `AZS_ZONE` (fixed facts, once per run), `AZS_RUN` (live run), `AZS_SCHEDULE` (`{index,at,name,final,state}`), `AZS_UNITS` (`{kind,id,name,hp,hpm,state}`, max 40), `AZS_TARGET`, `AZS_SPELLS` (`{key,spell,rank,cd,cdmax}`), `AZS_BUFFS` (`{spell,left}`), `AZS_METER`, `AZS_TAKEN` (`{source,dmg}`), `AZS_STATS`.
+**Tables:** `AZS_ZONE` (fixed facts, once per run), `AZS_RUN` (live run), `AZS_SCHEDULE` (`{index,at,name,final,state}`), `AZS_UNITS` (`{kind,id,name,hp,hpm,state}`, max 40), `AZS_DEBUFFS` (`{id,spell,stacks,duration,ends,permanent,dispel,icon,name}`), `AZS_TARGET`, `AZS_SPELLS` (`{key,spell,rank,cd,cdmax}`), `AZS_BUFFS` (`{spell,left}`), `AZS_METER`, `AZS_HEALING`, `AZS_BOSSMETER`, `AZS_CHESTS` (`{id,x,y,z,mx,my}`), `AZS_LAIRS` (`{index,state,name,id,left,x,y,z,mx,my}`), `AZS_TAKEN` (`{source,dmg}`), `AZS_STATS`.
 
 **HUD parts:** `clock, bosses, tally, build, banners, loot, meter`, plus `all`/nil. CVar equivalents: `hudClock` etc. (`"1"` shown / `"0"` hidden). Same as Options → Interface checkboxes; saved.
 
-**Addon prefixes (`arg1`) → table:** `AZSZONE→AZS_ZONE`, `AZSRUN→AZS_RUN`, `AZSBOSSES→AZS_SCHEDULE`, `AZSUNITS→AZS_UNITS`, `AZSTGT→AZS_TARGET`, `AZSSPELLS→AZS_SPELLS`, `AZSBUFFS→AZS_BUFFS`, `AZSMETER→AZS_METER`, `AZSTAKEN→AZS_TAKEN`, `AZS→AZS_STATS`. `key=value;` format for ZONE/RUN/TGT/STATS, `a,b,c;` entries for lists. Names never contain `;,=`.
+**Addon prefixes (`arg1`) → table:** `AZSZONE→AZS_ZONE`, `AZSRUN→AZS_RUN`, `AZSBOSSES→AZS_SCHEDULE`, `AZSUNITS→AZS_UNITS`, `AZSDEBUFFS→AZS_DEBUFFS`, `AZSTGT→AZS_TARGET`, `AZSSPELLS→AZS_SPELLS`, `AZSBUFFS→AZS_BUFFS`, `AZSMETER→AZS_METER`, `AZSHEAL→AZS_HEALING`, `AZSBOSSDMG→AZS_BOSSMETER`, `AZSCHESTS→AZS_CHESTS`, `AZSLAIRS→AZS_LAIRS`, `AZSTAKEN→AZS_TAKEN`, `AZS→AZS_STATS`. `key=value;` format for ZONE/RUN/TGT/STATS, `a,b,c;` entries for lists. Names never contain `;,=`.
 
 **Keys:** zones `elwynn, duskwood, wsg, ab, feralas, arena, av, brm, aq`; classes `warrior, paladin, hunter, rogue, priest, shaman, mage, warlock, druid`; phases `ready, playing, choosing, paused, dead, victory`; kinds `final, boss, guardian, elite, normal`.
 
