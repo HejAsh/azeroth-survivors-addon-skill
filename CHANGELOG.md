@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `AZS_LAIRS` tables, and their `CHAT_MSG_ADDON` prefixes.
 
 ### Added
+- Documented the stored-level-up API in `addon_docs.md`, the skill's
+  `references/api.md` and `SKILL.md`, and the run API list in
+  `references/client-api.md`: `AZS_GetStoredLevels()`, `AZS_OpenStoredLevels()`,
+  `AZS_IsStoringLevels()`, `AZS_SetStoringLevels(store)`, the `AZS_RUN.sl`
+  field, and the `levels` HUD part (`AZS_SetHudShown("levels", false)`, CVar
+  `hudLevels`).
 - `CHANGELOG.md` to track notable changes going forward.
 
 ## How to publish a release

@@ -42,6 +42,7 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 - `GameTooltip_SetDefaultAnchor` parks the tooltip bottom-right — mind it when drawing something in that corner.
 - `AZS_ZONE` is sent once per run: after a mid-run `/reload` it can be empty. Fall back to `GetRealZoneText()` plus `AZS_RUN.fin` for the zone facts.
 - The phase string reports `playing` while the level-up picker is up — detect cards with `AZS_RUN.owed > 0`. Bar slots 1–6 mirror `AZS_SPELLS` order (racial last = slot 12); `GetActionCooldown` is not wired, never map by cooldown. Full source-verified model: `references/card-system.md`.
+- Level-ups can be stored and taken later: the count is `AZS_RUN.sl` / `AZS_GetStoredLevels()`, `AZS_OpenStoredLevels()` takes them, and `AZS_IsStoringLevels()` / `AZS_SetStoringLevels(store)` read and set the storing toggle. Hide the stock "Level Up!" button with `AZS_SetHudShown("levels", false)` and draw your own.
 
 ## Using `references/client-api.md`
 
@@ -73,11 +74,11 @@ is `references/client-api.md`. Check a name there before using it: it is the
 client's own captured reference, and a name being present does not promise the
 feature is built.
 
-**Functions:** `AZS_GetRunTime()`, `AZS_GetPhase()`, `AZS_GetRunLength()`, `AZS_GetBosses()`, `AZS_GetUpcomingBosses()`, `AZS_GetGuardians()`, `AZS_GetDebuffs(id)`, `AZS_GetMeter()`, `AZS_GetHealing()`, `AZS_GetBossMeter()`, `AZS_GetLairs()`, `AZS_UnitKind(unit)`, `AZS_SetHudShown(part, shown)` / `AZS_IsHudShown(part)`.
+**Functions:** `AZS_GetRunTime()`, `AZS_GetPhase()`, `AZS_GetRunLength()`, `AZS_GetBosses()`, `AZS_GetUpcomingBosses()`, `AZS_GetGuardians()`, `AZS_GetDebuffs(id)`, `AZS_GetMeter()`, `AZS_GetHealing()`, `AZS_GetBossMeter()`, `AZS_GetLairs()`, `AZS_UnitKind(unit)`, `AZS_GetStoredLevels()`, `AZS_OpenStoredLevels()`, `AZS_IsStoringLevels()`, `AZS_SetStoringLevels(store)`, `AZS_SetHudShown(part, shown)` / `AZS_IsHudShown(part)`.
 
 **Tables:** `AZS_ZONE` (fixed facts, once per run), `AZS_RUN` (live run), `AZS_SCHEDULE` (`{index,at,name,final,state}`), `AZS_UNITS` (`{kind,id,name,hp,hpm,state}`, max 40), `AZS_DEBUFFS` (`{id,spell,stacks,duration,ends,permanent,dispel,icon,name}`), `AZS_TARGET`, `AZS_SPELLS` (`{key,spell,rank,cd,cdmax}`), `AZS_BUFFS` (`{spell,left}`), `AZS_METER`, `AZS_HEALING`, `AZS_BOSSMETER`, `AZS_CHESTS` (`{id,x,y,z,mx,my}`), `AZS_LAIRS` (`{index,state,name,id,left,x,y,z,mx,my}`), `AZS_TAKEN` (`{source,dmg}`), `AZS_STATS`.
 
-**HUD parts:** `clock, bosses, tally, build, banners, loot, meter`, plus `all`/nil. CVar equivalents: `hudClock` etc. (`"1"` shown / `"0"` hidden). Same as Options → Interface checkboxes; saved.
+**HUD parts:** `clock, bosses, tally, build, levels, banners, loot, meter`, plus `all`/nil. CVar equivalents: `hudClock` etc. (`"1"` shown / `"0"` hidden). Same as Options → Interface checkboxes; saved. `levels` is the stock "Level Up!" button.
 
 **Addon prefixes (`arg1`) → table:** `AZSZONE→AZS_ZONE`, `AZSRUN→AZS_RUN`, `AZSBOSSES→AZS_SCHEDULE`, `AZSUNITS→AZS_UNITS`, `AZSDEBUFFS→AZS_DEBUFFS`, `AZSTGT→AZS_TARGET`, `AZSSPELLS→AZS_SPELLS`, `AZSBUFFS→AZS_BUFFS`, `AZSMETER→AZS_METER`, `AZSHEAL→AZS_HEALING`, `AZSBOSSDMG→AZS_BOSSMETER`, `AZSCHESTS→AZS_CHESTS`, `AZSLAIRS→AZS_LAIRS`, `AZSTAKEN→AZS_TAKEN`, `AZS→AZS_STATS`. `key=value;` format for ZONE/RUN/TGT/STATS, `a,b,c;` entries for lists. Names never contain `;,=`.
 

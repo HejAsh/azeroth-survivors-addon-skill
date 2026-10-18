@@ -106,6 +106,7 @@ The game fills these before any addon loads and keeps them current; see
 ```
 AZS_GetRunTime() AZS_GetPhase() AZS_GetRunLength() AZS_GetBosses()
 AZS_GetUpcomingBosses() AZS_GetGuardians() AZS_GetMeter() AZS_UnitKind(unit)
+AZS_GetStoredLevels() AZS_OpenStoredLevels() AZS_IsStoringLevels() AZS_SetStoringLevels(store)
 AZS_SetHudShown(part, shown) AZS_IsHudShown(part)
 ```
 

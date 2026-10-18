@@ -183,6 +183,22 @@ What an enemy unit (`"target"`, `"mouseover"`, …) is to the run: `final`, `bos
 So `guardian` is reported only for your **target**, which the server knows; on other units a
 guardian reads as `elite`.
 
+### `AZS_GetStoredLevels()` → `count` or `nil`
+How many level-ups are stored (banked) and waiting to be taken. The same number as
+`AZS_RUN.sl`; `nil` before the first update of a run.
+
+### `AZS_OpenStoredLevels()`
+Take the stored level-ups: the game puts up their cards now. This is what an addon's own
+"Level Up!" button calls (hide the stock one with `AZS_SetHudShown("levels", false)`). Does
+nothing when none are stored.
+
+### `AZS_IsStoringLevels()` → `boolean` or `nil`
+Whether new level-ups are being stored instead of offered the moment they are earned.
+
+### `AZS_SetStoringLevels(store)`
+Turn level-up storing on (`true`) or off (`false`): while it is on, new level-ups are banked
+rather than offered as they come.
+
 ### `AZS_SetHudShown(part, shown)` / `AZS_IsHudShown(part)`
 Hide or show a part of the game's own HUD: see [Hiding the game's HUD](#hiding-the-games-hud).
 
@@ -246,6 +262,7 @@ Sent once at the start of a run.
 | `bk`, `gk`, `ek` | bosses, guardians and elites killed |
 | `ck` | caches opened |
 | `owed` | choices waiting (level-ups and caches not yet picked) |
+| `sl` | level-ups stored and waiting (`AZS_GetStoredLevels()`) |
 
 ### `AZS_SCHEDULE`: the zone's bosses, in order
 A list of `{ index, at, name, final, state }`:
@@ -344,6 +361,7 @@ its place:
 | `bosses` | boss and guardian health bars | `hudBosses` |
 | `tally` | the kills and gold box | `hudTally` |
 | `build` | the spells and jewelry rows | `hudBuild` |
+| `levels` | the "Level Up!" button | `hudLevels` |
 | `banners` | messages in the middle of the screen | `hudBanners` |
 | `loot` | the boss loot notice | `hudLoot` |
 | `meter` | the damage meter window and its minimap button | `hudMeter` |
@@ -498,6 +516,32 @@ local f = CreateFrame("Frame");
 f:SetScript("OnUpdate", function()
 	local lines, total, dps = AZS_GetMeter();
 	-- draw `lines` your way: lines[i].name, .dmg, .dps, .share, .proc
+end);
+```
+
+### Your own "Level Up!" button
+
+```lua
+AZS_SetHudShown("levels", false);
+
+local button = CreateFrame("Button", "MyLevelUp", UIParent);
+button:SetWidth(120); button:SetHeight(24);
+button:SetPoint("TOP", UIParent, "TOP", 0, -40);
+button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+button.text:SetPoint("CENTER", button, "CENTER");
+
+button:SetScript("OnUpdate", function()
+	local stored = ( AZS_GetStoredLevels and AZS_GetStoredLevels() ) or 0;
+	if ( stored > 0 ) then
+		button.text:SetText("Level Up! (" .. stored .. ")");
+		button:Show();
+	else
+		button:Hide();
+	end
+end);
+
+button:SetScript("OnClick", function()
+	if ( AZS_OpenStoredLevels ) then AZS_OpenStoredLevels(); end
 end);
 ```
 
