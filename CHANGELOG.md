@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `AZS_GetBossMeter()`, `AZS_GetLairs()`, the `debuffs` field on bosses and
   guardians, the `AZS_DEBUFFS`, `AZS_HEALING`, `AZS_BOSSMETER`, `AZS_CHESTS`
   and `AZS_LAIRS` tables, and their `CHAT_MSG_ADDON` prefixes.
+- Documented that the addon VM has no `_G` table: globals must be read and
+  written via `getglobal`/`setglobal` (Lua 5.0 style), in `addon_docs.md`,
+  `references/api.md`, `references/client-api.md` and `SKILL.md`.
 
 ### Added
 - Documented the stored-level-up API in `addon_docs.md`, the skill's

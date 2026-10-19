@@ -25,6 +25,7 @@ Azeroth Survivors addons are stock 1.12 addons (`## Interface: 11200`, Lua + XML
 ## Hard rules (1.12 + AZS quirks)
 
 - Lua 1.12 only: `this, event, arg1...`, `table.getn`, `math.mod`, `string.find`. No `string.gmatch`, no GUID APIs.
+- No `_G` table: look up and set globals with `getglobal`/`setglobal`, as in the original game.
 - Spawn `id` is unique within a run but cannot be mapped from a unit token. Match enemies by `name` (+ target). Boss names are unique per zone.
 - `names` are localized (same as `UnitName`); `zone / class / phase / kind` keys are NOT localized — use keys for logic.
 - Guardians: only `target` reports `guardian` via `AZS_UnitKind` / `AZS_TARGET.kind`; other units read as `elite`. Use `AZS_GetGuardians()` for the full list by id+name.

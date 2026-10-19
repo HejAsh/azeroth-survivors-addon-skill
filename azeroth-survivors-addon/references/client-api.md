@@ -87,6 +87,9 @@ strmatch gmatch strrev securecall hooksecurefunc issecure issecurevariable hook
 CopyTable Mixin table.pack table.unpack table.move
 ```
 
+There is **no `_G` table** in this VM: look up and set globals with
+`getglobal`/`setglobal`, as in the original game.
+
 The `#` length operator and `goto` are also 5.1+/5.2+. Lua 5.0's parser
 rejects `...` in a call's argument list, which is not obvious and fails at load.
 Feature-detect anything you are unsure of (`if (GetActionCooldown) then ...`).

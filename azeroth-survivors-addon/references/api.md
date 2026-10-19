@@ -510,7 +510,8 @@ something changed.
 - **Zone, class and phase keys are not localized,** so use those for logic.
 - **Run time:** use `AZS_GetRunTime()` rather than `AZS_RUN.t` for a smooth clock.
 - **Lua:** write for 1.12 conventions: `this`, `event`, `arg1`…, `table.getn`, `math.mod`,
-  `string.find` (there's no `string.gmatch` in 1.12 addons).
+  `string.find` (there's no `string.gmatch` in 1.12 addons). There is no `_G` table: look up
+  and set globals with `getglobal`/`setglobal`, as in the original game.
 - **Out of a run:** the tables may keep the last run's values, so check `AZS_GetPhase()`.
 - **Read-only:** the API only reads the run. Nothing an addon does changes the run, except
   hiding the HUD.
