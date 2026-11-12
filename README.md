@@ -2,6 +2,10 @@
 
 <div align="center">
 
+<img src="assets/azeroth-survivors-addon-api-skill.png" alt="Azeroth Survivors Addon API skill" width="760">
+
+<br>
+
 <a href="https://ko-fi.com/hejash"><img alt="Ko-fi" src="https://img.shields.io/badge/Ko--fi-hejash-ff5e5b?logo=kofi&logoColor=white"></a>
 <a href="https://buymeacoffee.com/hejash"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-hejash-ffdd00?logo=buymeacoffee&logoColor=black"></a>
 
